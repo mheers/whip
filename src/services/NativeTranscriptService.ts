@@ -147,8 +147,14 @@ export class NativeTranscriptService {
     return this.cache.retainForegroundTerminal(hostSessionId, terminalId);
   }
 
-  reconcileCache(core: NativeAppCore, owner: bigint, capacity: number, hosts: readonly TranscriptCacheHost[]): void {
-    const snapshot = this.cache.reconcile(core, owner, capacity);
+  reconcileCache(
+    core: NativeAppCore,
+    owner: bigint,
+    capacity: number,
+    hosts: readonly TranscriptCacheHost[],
+    preloadConversations = true,
+  ): void {
+    const snapshot = this.cache.reconcile(core, owner, capacity, preloadConversations);
     if (snapshot) this.applyResidency(snapshot, hosts);
   }
 

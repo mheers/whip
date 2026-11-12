@@ -581,6 +581,7 @@ export function AppShell({
                           language={language}
                           keepScreenOn={keepScreenOn}
                           reopenTerminalOnLaunch={reopenTerminalOnLaunch}
+                          preloadConversations={storedPreferences.preloadConversations}
                           agentCommand={agentCommand}
                           reverseControlInstructions={storedPreferences.reverseControlInstructions}
                           onReverseControlInstructionsChange={value =>
@@ -708,6 +709,12 @@ export function AppShell({
                           onReopenTerminalOnLaunchChange={value =>
                             preferences.setPreference(
                               'reopenTerminalOnLaunch',
+                              value,
+                            )
+                          }
+                          onPreloadConversationsChange={value =>
+                            preferences.setPreference(
+                              'preloadConversations',
                               value,
                             )
                           }

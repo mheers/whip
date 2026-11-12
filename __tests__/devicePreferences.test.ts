@@ -67,6 +67,17 @@ test('locked-screen read-aloud defaults off and preserves explicit opt-in', asyn
   await expect(loadDevicePreferences()).resolves.toMatchObject({ readAloudWhileLocked: true });
 });
 
+test('conversation preloading defaults off and preserves explicit opt-in', async () => {
+  expect(defaultDevicePreferences.preloadConversations).toBe(false);
+  for (const value of [undefined, 'true', 1, false, true]) {
+    mockGetItem.mockResolvedValueOnce(JSON.stringify({ preloadConversations: value }));
+    expect((await loadDevicePreferences()).preloadConversations).toBe(value === true);
+  }
+  await saveDevicePreferences({ ...defaultDevicePreferences, preloadConversations: true });
+  mockGetItem.mockResolvedValueOnce(mockSetItem.mock.calls.at(-1)?.[1] ?? null);
+  await expect(loadDevicePreferences()).resolves.toMatchObject({ preloadConversations: true });
+});
+
 test('VAD sensitivity defaults to the existing behavior and survives saving', async () => {
   mockGetItem.mockResolvedValue('{}');
   expect((await loadDevicePreferences()).vadSensitivity).toBe(50);
@@ -246,6 +257,7 @@ test('migrates the old 11px mobile default to the usable 8px geometry', async ()
     language: 'system',
     keepScreenOn: false,
     reopenTerminalOnLaunch: false,
+    preloadConversations: false,
     agentCommand: 'opencode',
     lastTab: 'terminal',
     terminalControlUsage: {},

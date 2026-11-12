@@ -979,7 +979,7 @@ int8_t uniffi_whip_ssh_fn_method_transcriptcache_owner_is_current(
     /*handle*/ uint64_t ptr, uint64_t token, RustCallStatus *uniffi_out_err);
 RustBuffer uniffi_whip_ssh_fn_method_transcriptcache_reconcile(
     /*handle*/ uint64_t ptr,
-    /*handle*/ uint64_t core, uint64_t owner, uint32_t capacity,
+    /*handle*/ uint64_t core, uint64_t owner, uint32_t capacity, int8_t preload,
     RustCallStatus *uniffi_out_err);
 void uniffi_whip_ssh_fn_method_transcriptcache_release(
     /*handle*/ uint64_t ptr, uint64_t token, RustCallStatus *uniffi_out_err);
@@ -22851,7 +22851,7 @@ NativeWhipSsh::NativeWhipSsh(
           rt,
           jsi::PropNameID::forAscii(
               rt, "ubrn_uniffi_whip_ssh_fn_method_transcriptcache_reconcile"),
-          4,
+          5,
           [this](jsi::Runtime &rt, const jsi::Value &thisVal,
                  const jsi::Value *args, size_t count) -> jsi::Value {
             return this
@@ -40860,7 +40860,7 @@ NativeWhipSsh::cpp_uniffi_whip_ssh_fn_method_transcriptcache_reconcile(
                                                         args[1]),
       uniffi_jsi::Bridging<uint64_t>::fromJs(rt, callInvoker, args[2]),
       uniffi_jsi::Bridging<uint32_t>::fromJs(rt, callInvoker, args[3]),
-      &status);
+      uniffi_jsi::Bridging<int8_t>::fromJs(rt, callInvoker, args[4]), &status);
   uniffi::whip_ssh::Bridging<RustCallStatus>::copyIntoJs(
       rt, callInvoker, status, args[count - 1]);
 

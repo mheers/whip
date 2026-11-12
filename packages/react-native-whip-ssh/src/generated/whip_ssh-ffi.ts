@@ -3115,6 +3115,7 @@ interface NativeModuleInterface {
     core: bigint,
     owner: bigint,
     capacity: number,
+    preload: number,
     uniffi_out_err: UniffiRustCallStatus,
   ): Uint8Array;
   ubrn_uniffi_whip_ssh_fn_method_transcriptcache_release(

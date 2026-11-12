@@ -965,6 +965,8 @@ export const zhHant: Record<string, string> = {
   'settings.doubleTapAction.escape': '傳送 Escape',
   'settings.afkMode': 'AFK 模式（離開鍵盤）',
   'settings.afkModeCopy': 'Whip 在背景執行時保留終端機控制權。工作中 → 閒置的通知在開啟時使用所選提醒等級，關閉時僅短暫提醒，包括目前選取的分頁。',
+  'settings.preloadConversations': '預載對話',
+  'settings.preloadConversationsCopy': '在背景下載代理程式聊天記錄，以便立即開啟聊天。會使用行動數據。預設關閉。',
   'settings.fontSize': '字型大小',
   'settings.scrollback': '回捲行數',
   'settings.lines': '{{count}} 行',

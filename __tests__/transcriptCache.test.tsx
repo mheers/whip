@@ -42,17 +42,17 @@ function descriptors(hosts: Host[], revision = 1n): NativeTranscriptCacheSnapsho
 
 function setup(hosts: Host[]) {
   const runtimesRef = { current: new Map(hosts.map(host => [host.id, { client: { activeNative: host.transport } }])) } as SessionRuntimeStore['runtimesRef'];
-  function Harness({ state, capacity }: { state: AppCoreProjection; capacity: number }) {
-    useTranscriptCache({ state, runtimesRef }, core, capacity);
+  function Harness({ state, capacity, preloadConversations }: { state: AppCoreProjection; capacity: number; preloadConversations: boolean }) {
+    useTranscriptCache({ state, runtimesRef }, core, capacity, preloadConversations);
     renderChrome();
     return null;
   }
   return {
     runtimesRef,
-    async render(capacity = 3) {
+    async render(capacity = 3, preloadConversations = true) {
       const state = { revision: 1, sessions: hosts.map(host => ({ id: host.id })) } as AppCoreProjection;
       await act(async () => {
-        const element = <Harness state={state} capacity={capacity} />;
+        const element = <Harness state={state} capacity={capacity} preloadConversations={preloadConversations} />;
         if (renderer) renderer.update(element); else renderer = create(element);
       });
     },
@@ -79,13 +79,27 @@ test('passes native ownership and capacity without projecting or ranking Herd in
   const hosts = [makeHost('one'), makeHost('two')];
   snapshot = descriptors(hosts);
   await setup(hosts).render(8);
-  expect(cache.reconcile).toHaveBeenCalledWith(core, expect.any(BigInt), 8);
+  expect(cache.reconcile).toHaveBeenCalledWith(core, expect.any(BigInt), 8, true);
   expect(core.herdView).not.toHaveBeenCalled();
   for (const current of hosts) {
     expect(agentTranscriptService.getState(current.binding.bindingToken)?.status).toBe('live');
     expect(current.transport.openAgentChat).not.toHaveBeenCalled();
     expect(current.transport.startAgentChat).not.toHaveBeenCalled();
   }
+});
+
+test('forwards the preload preference so native admission keeps attention chats unread', async () => {
+  const hosts = [makeHost('one')];
+  snapshot = descriptors(hosts);
+  const fixture = setup(hosts);
+  await fixture.render(3, false);
+  expect(cache.reconcile).toHaveBeenLastCalledWith(core, expect.any(BigInt), 3, false);
+  expect(hosts[0]!.transport.openAgentChat).not.toHaveBeenCalled();
+  expect(hosts[0]!.transport.startAgentChat).not.toHaveBeenCalled();
+
+  // Opting back in re-runs native admission with the warm-cache policy.
+  await fixture.render(3, true);
+  expect(cache.reconcile).toHaveBeenLastCalledWith(core, expect.any(BigInt), 3, true);
 });
 
 test('pin and subscription leases notify the adapter without rendering application chrome', async () => {

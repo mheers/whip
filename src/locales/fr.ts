@@ -978,6 +978,8 @@ export const fr = {
   'settings.doubleTapAction.escape': 'Envoyer Échap',
   'settings.afkMode': 'Mode AFK (loin du clavier)',
   'settings.afkModeCopy': 'Conserver le contrôle du terminal lorsque Whip est en arrière-plan. Les transitions travail → inactivité utilisent le niveau d’alerte choisi en mode AFK et une alerte brève sinon, y compris dans l’onglet actif.',
+  'settings.preloadConversations': 'Précharger les conversations',
+  'settings.preloadConversationsCopy': 'Télécharge l’historique de chat des agents en arrière-plan pour que Chat s’ouvre instantanément. Utilise des données mobiles. Désactivé par défaut.',
   'settings.fontSize': 'Taille de police',
   'settings.scrollback': 'Historique de défilement',
   'settings.lines': '{{count}} lignes',

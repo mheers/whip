@@ -29,6 +29,7 @@ impl Coordinator {
         capacity: u32,
         owner: u64,
         bridge: u64,
+        preload: bool,
     ) -> Option<Reconciliation> {
         let mut state = self.state.lock();
         if state.owners.last() != Some(&(owner, bridge)) {
@@ -55,7 +56,7 @@ impl Coordinator {
         }
         state.hosts.clone_from(&hosts);
         let (mut candidates, residents) = collect(&state, &hosts);
-        let selected = state.select(&mut candidates, &residents, &order);
+        let selected = state.select(&mut candidates, residents, &order, preload);
         let mut bindings = Vec::new();
         let mut starts = Vec::new();
         for host in &hosts {
@@ -94,6 +95,7 @@ impl Coordinator {
             .map(|binding| binding.binding_token.clone())
             .collect::<HashSet<_>>();
         state.start_errors.retain(|token| tokens.contains(token));
+        state.speculative.retain(|token| tokens.contains(token));
         state.pins.retain(|_, (_, pin)| match pin {
             Pin::Subscription(token) => tokens.contains(token),
             Pin::Foreground(_, _) => true,
@@ -174,9 +176,27 @@ impl State {
     fn select(
         &mut self,
         candidates: &mut [Candidate],
-        residents: &[Resident],
+        mut residents: Vec<Resident>,
         order: &[(String, String)],
+        preload: bool,
     ) -> HashSet<Identity> {
+        // Disabling preloading also releases conversations that admission opened
+        // speculatively. Pinned residents (an open or subscribed chat) stay.
+        if !preload {
+            residents.retain(|(host, binding, _)| {
+                if self.pinned(&host.id, binding)
+                    || !self.speculative.contains(&binding.binding_token)
+                {
+                    return true;
+                }
+                let _ = host
+                    .runtime
+                    .transcript_manager()
+                    .detach_terminal(&binding.terminal_id);
+                self.speculative.remove(&binding.binding_token);
+                false
+            });
+        }
         // Failure eligibility depends on session identity and connection generation,
         // never arbitrary host revisions such as focus or status events.
         self.failures.retain(|failure| {
@@ -195,7 +215,7 @@ impl State {
                 std::cmp::Reverse(self.used.get(&candidate.identity).copied().unwrap_or(0)),
             )
         });
-        for (host, binding, failed) in residents {
+        for (host, binding, failed) in &residents {
             if *failed
                 && !self.pinned(&host.id, binding)
                 && let Some(candidate) = candidates.iter().find(|candidate| {
@@ -228,7 +248,7 @@ impl State {
                 binding.runtime_incarnation == candidate.identity.0
                     && binding.transcript_key.as_str() == candidate.identity.1
             });
-            if !resident && !candidate.preload {
+            if !resident && !(preload && candidate.preload) {
                 continue;
             }
             let manager = candidate.host.runtime.transcript_manager();
@@ -240,7 +260,11 @@ impl State {
                     .runtime
                     .bind_transcript_candidate(candidate.terminal.clone())
                 {
-                    Ok(crate::AgentChatOpenResult::Bound { .. }) => {}
+                    Ok(crate::AgentChatOpenResult::Bound { binding }) => {
+                        if !resident {
+                            self.speculative.insert(binding.binding_token);
+                        }
+                    }
                     _ => {
                         self.failures.insert(candidate.failure.clone());
                         continue;

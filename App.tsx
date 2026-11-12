@@ -157,6 +157,7 @@ function AppContent({ fontsReady }: { fontsReady: boolean }) {
     preferencesLoaded,
     terminalHistoryLoaded: history.loaded,
     reopenTerminalOnLaunch: preferences.value.reopenTerminalOnLaunch,
+    preloadConversations: preferences.value.preloadConversations,
     alertsEnabled: preferences.value.alertsEnabled,
     afkMode: preferences.value.terminal.afkMode,
     agentAlertLevel: preferences.value.agentAlertLevel,

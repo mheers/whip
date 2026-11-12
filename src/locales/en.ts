@@ -975,6 +975,8 @@ export const en = {
   'settings.doubleTapAction.escape': 'Send Escape',
   'settings.afkMode': 'AFK mode (away from keyboard)',
   'settings.afkModeCopy': 'Keep terminal control while Whip is in the background. Working → idle alerts use your alert level when on and a short alert when off, including the focused tab.',
+  'settings.preloadConversations': 'Preload conversations',
+  'settings.preloadConversationsCopy': 'Download agent chat history in the background so Chat opens instantly. Uses mobile data. Off by default.',
   'settings.fontSize': 'Font size',
   'settings.scrollback': 'Scrollback',
   'settings.lines': '{{count}} lines',

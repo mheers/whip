@@ -965,6 +965,8 @@ export const zhHans = {
   'settings.doubleTapAction.escape': '发送转义',
   'settings.afkMode': 'AFK 模式（离开键盘）',
   'settings.afkModeCopy': 'Whip 在后台时保持终端控制权。工作中 → 空闲的通知在开启时使用所选提醒级别，关闭时仅短暂提醒，包括当前选中的标签页。',
+  'settings.preloadConversations': '预加载对话',
+  'settings.preloadConversationsCopy': '在后台下载代理聊天记录，以便立即打开聊天。会使用移动数据。默认关闭。',
   'settings.fontSize': '字体大小',
   'settings.scrollback': '回滚',
   'settings.lines': '{{count}} 行',

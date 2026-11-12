@@ -61,6 +61,7 @@ interface SessionRuntimeManagerOptions {
   preferencesLoaded: boolean;
   terminalHistoryLoaded: boolean;
   reopenTerminalOnLaunch: boolean;
+  preloadConversations: boolean;
   alertsEnabled: boolean;
   afkMode?: boolean;
   agentAlertLevel: AgentAlertLevel;
@@ -160,6 +161,7 @@ export function useSessionRuntimeManager({
   preferencesLoaded,
   terminalHistoryLoaded,
   reopenTerminalOnLaunch,
+  preloadConversations,
   alertsEnabled,
   afkMode = false,
   agentAlertLevel,
@@ -207,7 +209,7 @@ export function useSessionRuntimeManager({
     sessionProfilesRef,
     commitAppCore,
   };
-  useTranscriptCache(store, appCore, transcriptCacheCapacity);
+  useTranscriptCache(store, appCore, transcriptCacheCapacity, preloadConversations);
   useSessionOfflineRestore(store);
 
   useNotificationLeases(alertsEnabled && notifications.ready);

@@ -965,6 +965,8 @@ export const es = {
   'settings.doubleTapAction.escape': 'Enviar escape',
   'settings.afkMode': 'Modo AFK (lejos del teclado)',
   'settings.afkModeCopy': 'Mantiene el control del terminal mientras Whip está en segundo plano. Las alertas de trabajando → inactivo usan el nivel elegido al activar este modo y una alerta breve al desactivarlo, incluso en la pestaña enfocada.',
+  'settings.preloadConversations': 'Precargar conversaciones',
+  'settings.preloadConversationsCopy': 'Descarga el historial de chat de los agentes en segundo plano para que Chat se abra al instante. Usa datos móviles. Desactivado de forma predeterminada.',
   'settings.fontSize': 'Tamaño de fuente',
   'settings.scrollback': 'Desplazamiento hacia atrás',
   'settings.lines': '{{count}} líneas',

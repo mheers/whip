@@ -26,6 +26,7 @@ describe('billing presentation adapters', () => {
       language: 'system',
       keepScreenOn: false,
       reopenTerminalOnLaunch: false,
+      preloadConversations: false,
       agentCommand: 'opencode',
       reverseControlInstructions: '',
       lastTab: 'hosts',

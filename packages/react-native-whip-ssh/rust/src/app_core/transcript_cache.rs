@@ -77,7 +77,9 @@ struct State {
     used: HashMap<Identity, u64>,
     bindings: Vec<TranscriptCacheBinding>,
     capacity: u32,
-    sources: HashMap<u64, (Weak<AppCore>, u32)>,
+    /// Binding tokens opened by background admission rather than an explicit Chat open.
+    speculative: HashSet<String>,
+    sources: HashMap<u64, (Weak<AppCore>, u32, bool)>,
     last_core: Weak<AppCore>,
     awaiting_restore: bool,
 }
@@ -174,6 +176,9 @@ pub(crate) fn start_transcript_preload(manager: AgentSessionManager, token: Stri
     let should_start = !state.start_errors.contains(&token)
         && manager.binding_needs_start(&token)
         && state.starting.insert(token.clone());
+    if should_start {
+        state.speculative.insert(token.clone());
+    }
     drop(state);
     if should_start {
         start(cache, manager, token);
@@ -280,14 +285,17 @@ impl TranscriptCache {
 
     /// Reconcile native snapshots and the unfiltered, cross-host Herd ranking.
     /// Superseded React surfaces cannot overwrite the current owner's hosts.
+    /// `preload` gates speculative admission: with it off, attention-ranked
+    /// conversations stay unread until the user opens Chat.
     pub fn reconcile(
         &self,
         core: Arc<AppCore>,
         owner: u64,
         capacity: u32,
+        preload: bool,
     ) -> Option<TranscriptCacheSnapshot> {
         self.coordinator
-            .reconcile(core, owner, self.bridge, capacity)
+            .reconcile(core, owner, self.bridge, capacity, preload)
     }
 }
 
@@ -314,6 +322,9 @@ impl Coordinator {
             .retain(|failure| failure.incarnation != incarnation || failure.terminal != terminal);
         if let Some(binding) = binding {
             state.start_errors.remove(&binding.binding_token);
+            // An explicit open adopts the conversation; it must survive
+            // disabling preloading.
+            state.speculative.remove(&binding.binding_token);
             state.clock += 1;
             let clock = state.clock;
             state
@@ -329,6 +340,7 @@ impl Coordinator {
         owner: u64,
         bridge: u64,
         capacity: u32,
+        preload: bool,
     ) -> Option<TranscriptCacheSnapshot> {
         let _reconciliation = self.reconciliation.lock();
         if self.state.lock().owners.last() != Some(&(owner, bridge)) {
@@ -381,7 +393,7 @@ impl Coordinator {
                 .collect::<Vec<_>>();
             (hosts, order, handoff)
         };
-        let (snapshot, starts) = self.reconcile_hosts(hosts, order, capacity, owner, bridge)?;
+        let (snapshot, starts) = self.reconcile_hosts(hosts, order, capacity, owner, bridge, preload)?;
         for (manager, token) in starts {
             start(self.clone(), manager, token);
         }
@@ -389,7 +401,7 @@ impl Coordinator {
         if state.owners.last() == Some(&(owner, bridge)) {
             state
                 .sources
-                .insert(owner, (Arc::downgrade(&core), capacity));
+                .insert(owner, (Arc::downgrade(&core), capacity, preload));
             state.last_core = Arc::downgrade(&core);
             state.awaiting_restore = handoff;
         }
@@ -404,7 +416,7 @@ impl Coordinator {
                 state
                     .sources
                     .get(owner)
-                    .is_some_and(|(core, _)| core.strong_count() > 0)
+                    .is_some_and(|(core, _, _)| core.strong_count() > 0)
             });
             drop(state);
             if !available {
@@ -437,12 +449,19 @@ impl Coordinator {
         let source = {
             let state = self.state.lock();
             state.owners.last().and_then(|(owner, bridge)| {
-                let (core, capacity) = state.sources.get(owner)?;
-                Some((core.upgrade()?, *owner, *bridge, *capacity, state.revision))
+                let (core, capacity, preload) = state.sources.get(owner)?;
+                Some((
+                    core.upgrade()?,
+                    *owner,
+                    *bridge,
+                    *capacity,
+                    *preload,
+                    state.revision,
+                ))
             })
         };
-        if let Some((core, owner, bridge, capacity, previous_revision)) = source
-            && let Some(snapshot) = self.reconcile(core, owner, bridge, capacity)
+        if let Some((core, owner, bridge, capacity, preload, previous_revision)) = source
+            && let Some(snapshot) = self.reconcile(core, owner, bridge, capacity, preload)
             && snapshot.revision != previous_revision
         {
             notify_listeners(self);

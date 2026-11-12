@@ -42,6 +42,14 @@ tab or invalidating its host or agent-session identity still releases the
 affected binding. Returning to a cached chat reuses its latest transcript
 without restarting the stream.
 
+Background preloading is opt-in. `preloadConversations` defaults off and is
+forwarded to native admission, because a cold cache would otherwise read the
+complete provider history for every attention-ranked agent over the host
+connection. Turning it off also releases already-open speculative bindings,
+while explicit Chat opens and cached local history remain unaffected. When
+enabled, initial history is checkpointed by byte progress so an interrupted
+cold read resumes instead of starting at zero.
+
 Rust normalizes input/output counts to include their respective subsets:
 
 | Source | Input | Output | Outcome |

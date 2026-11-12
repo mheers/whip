@@ -107,6 +107,7 @@ export interface DevicePreferences {
   language: LanguagePreference;
   keepScreenOn: boolean;
   reopenTerminalOnLaunch: boolean;
+  preloadConversations: boolean;
   agentCommand: string;
   reverseControlInstructions: string;
   lastTab: AppTab;
@@ -135,6 +136,7 @@ export const defaultDevicePreferences: DevicePreferences = {
   language: 'system',
   keepScreenOn: false,
   reopenTerminalOnLaunch: false,
+  preloadConversations: false,
   agentCommand: 'opencode',
   reverseControlInstructions: 'Use Whip MCP',
   lastTab: 'hosts',
@@ -316,6 +318,7 @@ function parseDevicePreferences(
         : defaultDevicePreferences.language,
       keepScreenOn: parsed.keepScreenOn === true,
       reopenTerminalOnLaunch: parsed.reopenTerminalOnLaunch === true,
+      preloadConversations: parsed.preloadConversations === true,
       reverseControlInstructions: typeof parsed.reverseControlInstructions === 'string'
         ? parsed.reverseControlInstructions
         : defaultDevicePreferences.reverseControlInstructions,
