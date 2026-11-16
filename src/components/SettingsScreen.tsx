@@ -138,6 +138,7 @@ export interface SettingsSectionProps {
   language: LanguagePreference;
   keepScreenOn: boolean;
   reopenTerminalOnLaunch: boolean;
+  preloadConversations: boolean;
   agentCommand: string;
   reverseControlInstructions: string;
   onReverseControlInstructionsChange: (value: string) => void;
@@ -165,6 +166,7 @@ export interface SettingsSectionProps {
   onLanguageChange: (value: LanguagePreference) => void;
   onKeepScreenOnChange: (value: boolean) => void;
   onReopenTerminalOnLaunchChange: (value: boolean) => void;
+  onPreloadConversationsChange: (value: boolean) => void;
   onAgentCommandChange: (value: string) => void;
   onDeleteTerminalHistory: (entries: readonly string[]) => void;
   terminalPreferences: TerminalPreferences;
@@ -431,6 +433,13 @@ export function SettingsSection(props: SettingsSectionProps) {
             autoCorrect={false}
           />
         </View>
+        <SettingRow
+          title={t('settings.preloadConversations')}
+          copy={t('settings.preloadConversationsCopy')}
+          value={props.preloadConversations}
+          onChange={props.onPreloadConversationsChange}
+          divided
+        />
         <ChatCacheSetting />
       </CollapsibleSectionCard>
 

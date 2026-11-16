@@ -36,8 +36,8 @@ export class NativeTranscriptCache {
     return this.release(this.cache.retainSubscription(bindingToken));
   }
 
-  reconcile(core: NativeAppCore, owner: bigint, capacity: number): NativeTranscriptCacheSnapshot | undefined {
-    const snapshot = this.cache.reconcile(core.connectionCore, owner, capacity);
+  reconcile(core: NativeAppCore, owner: bigint, capacity: number, preload: boolean): NativeTranscriptCacheSnapshot | undefined {
+    const snapshot = this.cache.reconcile(core.connectionCore, owner, capacity, preload);
     return snapshot && { revision: snapshot.revision, bindings: snapshot.bindings.map(binding => ({
       ...binding, runtimeIncarnation: Number(binding.runtimeIncarnation),
     })) };

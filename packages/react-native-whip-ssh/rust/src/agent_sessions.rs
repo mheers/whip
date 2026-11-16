@@ -2880,13 +2880,15 @@ fn stream_data(context: u64, bytes: Vec<u8>) {
                     let checkpoint_base = session
                         .pending_cache_offset
                         .unwrap_or_else(|| core.committed_offset());
-                    let checkpoint_due = update.as_ref().is_some_and(completes_turn)
+                    // Initial history is checkpointed by byte progress only. Once
+                    // caught up, completed turns also make the cache current.
+                    let caught_up = core.initial_history_caught_up();
+                    let checkpoint_due = (caught_up && update.as_ref().is_some_and(completes_turn))
                         || result.committable_offset.saturating_sub(checkpoint_base)
                             >= FILE_CHECKPOINT_BYTES;
                     // Keep at most one full checkpoint in flight per session.
                     // Its durable cursor advances only after the worker commits.
-                    let new_checkpoint = core.initial_history_caught_up()
-                        && session.pending_cache_offset.is_none()
+                    let new_checkpoint = session.pending_cache_offset.is_none()
                         && checkpoint_due
                         && result.committable_offset > checkpoint_base;
                     let cache = new_checkpoint
@@ -4751,7 +4753,7 @@ mod tests {
     }
 
     #[test]
-    fn codex_stream_checkpoints_after_history_and_waits_for_confirmation() {
+    fn codex_stream_checkpoints_during_initial_history_and_waits_for_confirmation() {
         let manager = test_manager("checkpoint-host");
         manager.connected();
         let binding = manager
@@ -4784,20 +4786,29 @@ mod tests {
         streams().write().insert(context, stream_context);
 
         stream_data(context, chunk.clone());
-        stream_data(context, chunk.clone());
-        assert!(manager.inner.state.lock().checkpoints.is_empty());
-        stream_data(context, chunk.clone());
         let first_token = {
             let state = manager.inner.state.lock();
             assert_eq!(state.checkpoints.len(), 1);
             state.checkpoints.keys().next().unwrap().clone()
         };
+        // A second chunk cannot start another checkpoint while the first is
+        // still in flight, even though it crosses the byte threshold.
         stream_data(context, chunk.clone());
         assert_eq!(manager.inner.state.lock().checkpoints.len(), 1);
 
         assert!(manager.confirm_cache(&first_token));
-        stream_data(context, chunk);
+        stream_data(context, chunk.clone());
         assert_eq!(manager.inner.state.lock().checkpoints.len(), 1);
+        let second_token = {
+            let state = manager.inner.state.lock();
+            state
+                .checkpoints
+                .keys()
+                .find(|token| **token != first_token)
+                .unwrap()
+                .clone()
+        };
+        assert!(manager.confirm_cache(&second_token));
         streams().write().remove(&context);
     }
 

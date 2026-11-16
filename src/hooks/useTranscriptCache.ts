@@ -11,6 +11,7 @@ export function useTranscriptCache(
   { state, runtimesRef }: Pick<SessionRuntimeStore, 'state' | 'runtimesRef'>,
   core: NativeAppCore,
   capacity: number,
+  preloadConversations = true,
 ): void {
   const ownership = useRef<ReturnType<typeof agentTranscriptService.claimCacheOwnership> | null>(null);
   const reconcile = useEffectEvent(() => {
@@ -22,7 +23,13 @@ export function useTranscriptCache(
       const host = transport.hostState();
       hosts.push({ hostSessionId: session.id, state: host, transport });
     }
-    agentTranscriptService.reconcileCache(core, ownership.current.token, capacity, hosts);
+    agentTranscriptService.reconcileCache(
+      core,
+      ownership.current.token,
+      capacity,
+      hosts,
+      preloadConversations,
+    );
   });
   useEffect(() => {
     const lease = agentTranscriptService.claimCacheOwnership();
@@ -46,5 +53,5 @@ export function useTranscriptCache(
       lease.release();
     };
   }, [core, runtimesRef]);
-  useEffect(() => { reconcile(); }, [capacity, core, state, runtimesRef]);
+  useEffect(() => { reconcile(); }, [capacity, core, preloadConversations, state, runtimesRef]);
 }

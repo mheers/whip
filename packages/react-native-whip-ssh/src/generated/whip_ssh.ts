@@ -61502,11 +61502,14 @@ export interface TranscriptCacheLike {
   /**
    * Reconcile native snapshots and the unfiltered, cross-host Herd ranking.
    * Superseded React surfaces cannot overwrite the current owner's hosts.
+   * `preload` gates speculative admission: with it off, attention-ranked
+   * conversations stay unread until the user opens Chat.
    */
   reconcile(
     core: AppCoreLike,
     owner: bigint,
     capacity: number,
+    preload: boolean,
   ): TranscriptCacheSnapshot | undefined;
   release(token: bigint): void;
   retainForegroundTerminal(host: string, terminal: string): bigint;
@@ -61576,11 +61579,14 @@ export class TranscriptCache
   /**
    * Reconcile native snapshots and the unfiltered, cross-host Herd ranking.
    * Superseded React surfaces cannot overwrite the current owner's hosts.
+   * `preload` gates speculative admission: with it off, attention-ranked
+   * conversations stay unread until the user opens Chat.
    */
   reconcile(
     core: AppCoreLike,
     owner: bigint,
     capacity: number,
+    preload: boolean,
   ): TranscriptCacheSnapshot | undefined {
     return ((__rb: Uint8Array) => {
       try {
@@ -61599,6 +61605,7 @@ export class TranscriptCache
             ),
             FfiConverterUInt64.lower(owner, nativeModule().rustbuffer_alloc),
             FfiConverterUInt32.lower(capacity, nativeModule().rustbuffer_alloc),
+            FfiConverterBool.lower(preload, nativeModule().rustbuffer_alloc),
             callStatus,
           );
         },
@@ -68740,7 +68747,7 @@ function uniffiEnsureInitialized() {
   }
   if (
     nativeModule().ubrn_uniffi_whip_ssh_checksum_method_transcriptcache_reconcile() !==
-    46180
+    11157
   ) {
     throw new UniffiInternalError.ApiChecksumMismatch(
       'uniffi_whip_ssh_checksum_method_transcriptcache_reconcile',

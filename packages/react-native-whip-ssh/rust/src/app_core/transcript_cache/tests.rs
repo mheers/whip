@@ -58,6 +58,17 @@ fn reconcile(
     order: &[(&str, usize)],
     capacity: u32,
 ) -> TranscriptCacheSnapshot {
+    reconcile_preload(cache, owner, hosts, order, capacity, true)
+}
+
+fn reconcile_preload(
+    cache: &TranscriptCache,
+    owner: u64,
+    hosts: &[Host],
+    order: &[(&str, usize)],
+    capacity: u32,
+    preload: bool,
+) -> TranscriptCacheSnapshot {
     cache
         .coordinator
         .reconcile_hosts(
@@ -69,6 +80,7 @@ fn reconcile(
             capacity,
             owner,
             cache.bridge,
+            preload,
         )
         .unwrap()
         .0
@@ -303,7 +315,7 @@ fn superseded_owners_cannot_evict_current_hosts_and_bridge_adoption_keeps_native
     assert!(
         cache
             .coordinator
-            .reconcile_hosts(vec![], vec![], 3, first, cache.bridge)
+            .reconcile_hosts(vec![], vec![], 3, first, cache.bridge, true)
             .is_none()
     );
     assert_eq!(
@@ -416,7 +428,7 @@ fn native_app_core_ranking_is_unfiltered_and_shared_by_all_hosts() {
         .take(3)
         .map(|agent| (agent.host_id, agent.agent.terminal_id))
         .collect::<HashSet<_>>();
-    let result = cache.reconcile(core, owner, 3).unwrap();
+    let result = cache.reconcile(core, owner, 3, true).unwrap();
     let actual = result
         .bindings
         .into_iter()
@@ -546,13 +558,13 @@ fn ui_runtime_detachment_keeps_residents_until_the_host_session_is_removed() {
             false,
         );
     }
-    let initial = cache.reconcile(core.clone(), owner, 3).unwrap();
+    let initial = cache.reconcile(core.clone(), owner, 3, true).unwrap();
     core.detach_runtime(host.id.clone());
-    assert_eq!(cache.reconcile(core.clone(), owner, 3).unwrap(), initial);
+    assert_eq!(cache.reconcile(core.clone(), owner, 3, true).unwrap(), initial);
     core.attach_runtime(host.id.clone(), host.runtime.clone());
-    assert_eq!(cache.reconcile(core.clone(), owner, 3).unwrap(), initial);
+    assert_eq!(cache.reconcile(core.clone(), owner, 3, true).unwrap(), initial);
     core.close_session(host.id.clone());
-    assert!(cache.reconcile(core, owner, 3).unwrap().bindings.is_empty());
+    assert!(cache.reconcile(core, owner, 3, true).unwrap().bindings.is_empty());
     assert!(
         host.runtime
             .current_agent_chat("terminal-0".into())
@@ -575,25 +587,25 @@ fn a_new_bridge_adopts_residents_before_its_app_core_finishes_restoring() {
             .unwrap();
         ready(&host, terminal, Some("Committed conversation"), false);
     }
-    let initial = cache.reconcile(core, owner, 3).unwrap();
+    let initial = cache.reconcile(core, owner, 3, true).unwrap();
     let replacement = AppCore::new();
     let new_owner = cache.claim_owner();
     for _ in 0..3 {
         assert_eq!(
-            cache.reconcile(replacement.clone(), new_owner, 3).unwrap(),
+            cache.reconcile(replacement.clone(), new_owner, 3, true).unwrap(),
             initial
         );
     }
     replacement.open_session(host.id.clone(), host.id.clone(), true);
     replacement.attach_runtime(host.id.clone(), host.runtime.clone());
     assert_eq!(
-        cache.reconcile(replacement.clone(), new_owner, 3).unwrap(),
+        cache.reconcile(replacement.clone(), new_owner, 3, true).unwrap(),
         initial
     );
     replacement.close_session(host.id);
     assert!(
         cache
-            .reconcile(replacement, new_owner, 3)
+            .reconcile(replacement, new_owner, 3, true)
             .unwrap()
             .bindings
             .is_empty()
@@ -651,4 +663,108 @@ fn voice_owned_transcript_survives_ui_eviction_and_is_released_when_the_call_end
         );
     }
     Ok(())
+}
+
+#[test]
+fn disabled_preload_keeps_attention_transcripts_off_the_wire() {
+    let _guard = crate::host_runtime::terminal_delivery_test_guard();
+    let cache = cache();
+    let owner = cache.claim_owner();
+    let (host, _) = host("cache-preload-off", 20);
+    let result = reconcile_preload(
+        &cache,
+        owner,
+        std::slice::from_ref(&host),
+        &[],
+        20,
+        false,
+    );
+    assert!(result.bindings.is_empty());
+    for terminal in 0..20 {
+        assert!(
+            !host
+                .runtime
+                .transcript_manager()
+                .has_terminal_binding(&format!("terminal-{terminal}")),
+            "terminal-{terminal} must stay unread while preloading is disabled"
+        );
+    }
+
+    // Opting in restores the warm attention-ranked admission.
+    let warm = reconcile_preload(
+        &cache,
+        owner,
+        std::slice::from_ref(&host),
+        &[],
+        20,
+        true,
+    );
+    assert_eq!(warm.bindings.len(), 20);
+}
+
+#[test]
+fn disabling_preload_releases_speculative_bindings_but_keeps_an_open_chat() {
+    let _guard = crate::host_runtime::terminal_delivery_test_guard();
+    let cache = cache();
+    let owner = cache.claim_owner();
+    let (host, _) = host("cache-preload-release", 2);
+    let warm = reconcile_preload(
+        &cache,
+        owner,
+        std::slice::from_ref(&host),
+        &[],
+        2,
+        true,
+    );
+    assert_eq!(
+        terminals(&warm),
+        vec![
+            (host.id.as_str(), "terminal-0"),
+            (host.id.as_str(), "terminal-1")
+        ]
+    );
+
+    let pin = cache.retain_foreground_terminal(host.id.clone(), "terminal-0".into());
+    let released = reconcile_preload(
+        &cache,
+        owner,
+        std::slice::from_ref(&host),
+        &[],
+        2,
+        false,
+    );
+    assert_eq!(terminals(&released), vec![(host.id.as_str(), "terminal-0")]);
+    assert!(
+        host.runtime
+            .transcript_manager()
+            .has_terminal_binding("terminal-0")
+    );
+    assert!(
+        !host
+            .runtime
+            .transcript_manager()
+            .has_terminal_binding("terminal-1")
+    );
+
+    cache.release(pin);
+}
+
+#[test]
+fn explicit_open_elevates_a_speculative_transcript_past_disabled_preload() {
+    let _guard = crate::host_runtime::terminal_delivery_test_guard();
+    let cache = cache();
+    let owner = cache.claim_owner();
+    let (host, _) = host("cache-preload-explicit", 2);
+    reconcile_preload(&cache, owner, std::slice::from_ref(&host), &[], 2, true);
+    // Opening Chat records the conversation as explicitly requested.
+    cache.coordinator.requested(&host.runtime, "terminal-1");
+    let released = reconcile_preload(
+        &cache,
+        owner,
+        std::slice::from_ref(&host),
+        &[],
+        2,
+        false,
+    );
+    assert_eq!(terminals(&released), vec![(host.id.as_str(), "terminal-1")]);
 }

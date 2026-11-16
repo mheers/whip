@@ -965,6 +965,8 @@ export const ja = {
   'settings.doubleTapAction.escape': 'エスケープを送信',
   'settings.afkMode': 'AFK モード（離席中）',
   'settings.afkModeCopy': 'Whip がバックグラウンドでもターミナルの制御を維持します。作業中 → 待機中の通知は、オンでは設定した通知レベル、オフでは短い通知を使用します。選択中のタブも対象です。',
+  'settings.preloadConversations': '会話をプリロード',
+  'settings.preloadConversationsCopy': 'バックグラウンドでエージェントのチャット履歴をダウンロードし、チャットをすぐに開けるようにします。モバイルデータを使用します。既定ではオフです。',
   'settings.fontSize': 'フォントサイズ',
   'settings.scrollback': 'スクロールバック',
   'settings.lines': '{{count}} 行',
